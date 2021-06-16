@@ -118,6 +118,8 @@
   (kbd "r") #'kubel-set-resource
   (kbd "R") #'kubel-fetch-api-resource-list
 
+  (kbd "I") #'kubel-invalidate-caches
+
   (kbd "g") #'kubel-refresh
 
   (kbd "h") #'kubel-evil-help-popup
