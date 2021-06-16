@@ -9,6 +9,50 @@ Emacs extension for controlling Kubernetes with limited permissions.
 
 You can [watch how kubel started](https://www.youtube.com/watch?v=w3krYEeqnyk) or [read about it](https://gist.github.com/abrochard/dd610fc4673593b7cbce7a0176d897de).
 
+
+## Main differences with https://github.com/abrochard/kubel
+
+My workflow needs to quickly change between multiple context, namespaces, and
+resources, kubel triggered a metadata refresh everytime that one of these
+changed. It also recreated the buffer and re-applied the mode (not sure why
+yet?).
+
+There is a new method `kubel-refresh` (bound to `g`) to call the kubectl command
+by demand using the configured parameters.  It doesn't matter to me that some
+metadata is stale, as most of the namespace/resources names that I use exist in
+different clusters. If for some reason a name doesn't exist, I can just type it
+or run `kubel-invalidate-caches` (`I`) or any of the new methods to fetch the
+right objects `kubel-fetch-contexts` (`C`), `kubel-fetch-namespaces` (`N`),
+`kubel-fetch-api-resource-list` (`R`).
+
+- Changing cluster/namespace/resource doesn't call kubectl.
+- Need to call `kubel-refresh` to run the command with the configured
+  cluster/namespace/resource.
+- Assume the user has access to list namespaces/resources.
+- Removed remote tramp support.
+- Don't recreate buffers, it only now uses the `*kubel*` buffer.
+
+My evil workflow bindings are:
+```
+  (kbd "I") #'kubel-invalidate-caches
+
+  (kbd "c") #'kubel-set-context
+  (kbd "C") #'kubel-fetch-contexts
+
+  (kbd "n") #'kubel-set-namespace
+  (kbd "N") #'kubel-fetch-namespaces
+
+  (kbd "r") #'kubel-set-resource
+  (kbd "R") #'kubel-fetch-api-resource-list
+
+  (kbd "g") #'kubel-refresh
+```
+
+I've also mapped `q` to exit the yaml resource details:
+```lisp
+  (evil-define-key 'normal 'kubel-yaml-editing-mode "q" #'kill-current-buffer)
+```
+
 ## Features
 We now support managing pretty much any resource!
 
