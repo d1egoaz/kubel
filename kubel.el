@@ -233,11 +233,11 @@ CMD is the command string to run."
 
 (defvar kubel--kubernetes-version-cached nil)
 
-(defvar kubel--kubernetes-resources-list-cached nil)
-
-(defvar kubel--can-get-namespace-cached nil)
+(defvar kubel--context-list-cached nil)
 
 (defvar kubel--namespace-list-cached nil)
+
+(defvar kubel--kubernetes-resources-list-cached nil)
 
 (defvar kubel--label-values-cached nil)
 
@@ -247,7 +247,6 @@ CMD is the command string to run."
   "Invalidate the context caches."
   (setq kubel--kubernetes-resources-list-cached nil)
   (setq kubel--kubernetes-version-cached nil)
-  (setq kubel--can-get-namespace-cached nil)
   (setq kubel--namespace-list-cached nil)
   (setq kubel--label-values-cached nil))
 
@@ -684,63 +683,46 @@ ARGS is the arguments list from transient."
         (setenv "KUBECONFIG" (expand-file-name configfile))
       (error "Kubectl config file '%s' does not exist!" configfile))))
 
-(defun kubel--can-get-namespace ()
-  "Determine if permissions allow for `kubectl get namespace` in current context."
-  (cond ((eq kubel-use-namespace-list 'on) t)
-        ((eq kubel-use-namespace-list 'auto)
-         (progn
-           (unless kubel--can-get-namespace-cached
-             (setq kubel--can-get-namespace-cached
-                   (equal "yes\n"
-                          (kubel--exec-to-string
-                           (format "kubectl --context %s auth can-i list namespaces" kubel-context))))))
-         kubel--can-get-namespace-cached)))
+(defun kubel-fetch-namespaces ()
+  (interactive)
+  (message "fetching list of namespaces...")
+  (setq kubel--namespace-list-cached
+        (split-string (kubel--exec-to-string
+                       (format "kubectl --context %s get namespace -o jsonpath='{.items[*].metadata.name}'" kubel-context)) " ")))
 
 (defun kubel--get-namespace ()
   "Get namespaces for current context, try to recover from cache first."
   (unless kubel--namespace-list-cached
-    (setq kubel--namespace-list-cached
-          (split-string (kubel--exec-to-string
-                         (format "kubectl --context %s get namespace -o jsonpath='{.items[*].metadata.name}'" kubel-context)) " ")))
+    (kubel-fetch-namespaces))
   kubel--namespace-list-cached)
-
-(defun kubel--list-namespace ()
-  "List namespace, either from history, or dynamically if possible."
-  (if (kubel--can-get-namespace)
-      (kubel--get-namespace)
-    kubel-namespace-history))
-
-(defun kubel--add-namespace-to-history (namespace)
-  "Add NAMESPACE to history if it isn't there already."
-  (unless (member namespace kubel-namespace-history)
-    (push namespace kubel-namespace-history)))
 
 (defun kubel-set-namespace ()
   "Set the namespace."
   (interactive)
-  (let* ((namespace (completing-read "Namespace: " (kubel--list-namespace)
-                                     nil nil nil nil "default"))
-         (kubel--buffer (get-buffer (kubel--buffer-name)))
-         (last-default-directory (when kubel--buffer
-                                   (with-current-buffer kubel--buffer default-directory))))
-    (when kubel--buffer (kill-buffer kubel--buffer))
-    (setq kubel-namespace namespace)
-    (kubel--add-namespace-to-history namespace)
-    (kubel last-default-directory)))
+  (setq kubel-namespace (completing-read "Namespace: " (kubel--get-namespace)
+                                         nil nil nil nil kubel-namespace))
+  (kubel))
+
+(defun kubel-fetch-contexts ()
+  (interactive)
+  (message "fetching list of contexts...")
+  (setq kubel--context-list-cached
+        (split-string
+         (kubel--exec-to-string
+          "kubectl config view -o jsonpath='{.contexts[*].name}'") " ")))
+
+(defun kubel--get-context ()
+  "Get contexts, try to recover from cache first."
+  (unless kubel--context-list-cached
+    (kubel-fetch-contexts))
+  kubel--context-list-cached)
 
 (defun kubel-set-context ()
   "Set the context."
   (interactive)
-  (let* ((kubel--buffer (get-buffer (kubel--buffer-name)))
-         (last-default-directory (when kubel--buffer (with-current-buffer kubel--buffer default-directory))))
-    (when kubel--buffer (kill-buffer kubel--buffer));; kill buffer for previous context if possible
-    (setq kubel-context
-          (completing-read
-           "Select context: "
-           (split-string (kubel--exec-to-string "kubectl config view -o jsonpath='{.contexts[*].name}'") " ")))
-    ;; (kubel--invalidate-context-caches)
-    ;; (setq kubel-namespace "default")
-    (kubel last-default-directory)))
+  (setq kubel-context (completing-read "Context: " (kubel--get-context)
+                                       nil nil nil nil kubel-context))
+  (kubel))
 
 (defun kubel--add-selector-to-history (selector)
   "Add SELECTOR to history if it isn't there already."
@@ -776,30 +758,27 @@ ARGS is the arguments list from transient."
                                         ; Update pod list according to the label selector
   (kubel))
 
-(defun kubel--fetch-api-resource-list ()
+(defun kubel-fetch-api-resource-list ()
+  (interactive)
   "Fetch the API resource list."
-  (split-string (kubel--exec-to-string
-                 (format "kubectl --context %s api-resources -o name --no-headers=true" kubel-context)) "\n"))
+  (message "fetching list of resources...")
+  (setq kubel--kubernetes-resources-list-cached
+        (split-string (kubel--exec-to-string
+                       (format "kubectl --context %s api-resources -o name --no-headers=true" kubel-context)) "\n")))
 
-(defun kubel-set-resource (&optional refresh)
-  "Set the resource.
-If called with a prefix argument REFRESH, refreshes
-the context caches, including the cached resource list."
-  (interactive "P")
-  (when refresh (kubel--invalidate-context-caches))
-  (let* ((current-buffer-name (kubel--buffer-name))
-         (resource-list (if (kubel-kubernetes-compatible-p '(1 13 3))
-                            (if (null kubel--kubernetes-resources-list-cached)
-                                (setq kubel--kubernetes-resources-list-cached
-                                      (kubel--fetch-api-resource-list))
-                              kubel--kubernetes-resources-list-cached)
-                          kubel-kubernetes-resources-list))
-         (kubel--buffer (get-buffer current-buffer-name))
-         (last-default-directory (when kubel--buffer (with-current-buffer kubel--buffer default-directory))))
-    (setq kubel-resource
-          (completing-read "Select resource: " resource-list))
-    (when kubel--buffer (kill-buffer kubel--buffer)) ;; kill buffer for previous context if possible
-    (kubel last-default-directory)))
+(defun kubel--get-resource ()
+  "Get resources, try to recover from cache first."
+  (unless kubel--kubernetes-resources-list-cached
+    (kubel-fetch-api-resource-list))
+  kubel--kubernetes-resources-list-cached)
+
+(defun kubel-set-resource ()
+  "Set the resource."
+  (interactive)
+  (setq kubel-resource
+        (completing-read "Select resource: " (kubel--get-resource)
+                         nil nil nil nil kubel-resource))
+  (kubel))
 
 (defun kubel-set-output-format ()
   "Set output format of kubectl."
