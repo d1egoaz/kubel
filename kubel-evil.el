@@ -110,13 +110,19 @@
   (kbd "K") #'kubel-set-kubectl-config-file
 
   (kbd "c") #'kubel-set-context
+  (kbd "C") #'kubel-fetch-contexts
+
   (kbd "n") #'kubel-set-namespace
+  (kbd "N") #'kubel-fetch-namespaces
+
   (kbd "r") #'kubel-set-resource
+  (kbd "R") #'kubel-fetch-api-resource-list
 
   (kbd "g") #'kubel-refresh
 
   (kbd "h") #'kubel-evil-help-popup
   (kbd "?") #'kubel-evil-help-popup
+
   (kbd "F") #'kubel-set-output-format
   (kbd "d") #'kubel-delete-popup
   (kbd "f") #'kubel-set-filter
