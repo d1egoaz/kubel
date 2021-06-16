@@ -31,6 +31,7 @@ right objects `kubel-fetch-contexts` (`C`), `kubel-fetch-namespaces` (`N`),
 - Assume the user has access to list namespaces/resources.
 - Removed remote tramp support.
 - Don't recreate buffers, it only now uses the `*kubel*` buffer.
+- Offer a method to show current configuration in the mode line.
 
 My evil workflow bindings are:
 ```
@@ -51,6 +52,36 @@ My evil workflow bindings are:
 I've also mapped `q` to exit the yaml resource details:
 ```lisp
   (evil-define-key 'normal 'kubel-yaml-editing-mode "q" #'kill-current-buffer)
+```
+
+### Mode line configuration
+
+`kubel-current-state` provides a method to show the current configuration in the mode line.
+```lisp
+(:eval (if (eq (buffer-local-value 'major-mode (current-buffer)) 'kubel-mode)
+    (kubel-current-state)))
+```
+
+Example:
+```lisp
+(setq-default mode-line-format
+              '("%e"
+                mode-line-front-space
+                "[" (:eval (diego/current-tab-name)) "]"
+                " "
+                mode-line-buffer-identification  " "
+                mode-line-position
+                minions-mode-line-modes
+                (vc-mode vc-mode) " "
+                mode-line-misc-info
+                mode-line-mule-info
+                mode-line-client
+                mode-line-modified
+                (:eval (if (eq (buffer-local-value 'major-mode (current-buffer)) 'kubel-mode)
+                           (kubel-current-state)))
+                mode-line-remote
+                mode-line-frame-identification
+                mode-line-end-spaces))
 ```
 
 ## Features
