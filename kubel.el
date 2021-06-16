@@ -156,16 +156,6 @@
   :type 'integer
   :group 'kubel)
 
-(defcustom kubel-use-namespace-list 'auto
-  "Control behavior for namespace completion.
-
-auto - default, use `kubectl auth can-i list namespace` to determine if we can list namespaces
-on - always assume we can list namespaces
-off - always assume we cannot list namespaces"
-  :type 'symbol
-  :group 'kubel
-  :options '('auto 'on 'off))
-
 (defun kubel--append-to-process-buffer (str)
   "Append string STR to the process buffer."
   (with-current-buffer (get-buffer-create kubel--process-buffer)
@@ -211,9 +201,6 @@ CMD is the command string to run."
 
 (defvar kubel--line-number nil
   "Store the current line number to jump back after a refresh.")
-
-(defvar kubel-namespace-history '()
-  "List of previously used namespaces.")
 
 (defvar kubel-selector-history '()
   "List of previously used selectors.")
