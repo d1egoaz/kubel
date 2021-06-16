@@ -1105,6 +1105,14 @@ DIRECTORY is optional for TRAMP support."
 (defun kubel--current-state ()
   (message (format "[Context: %s] [Namespace: %s] [Resource: %s]" kubel-context kubel-namespace kubel-resource)))
 
+(defun kubel-current-state ()
+  (concat
+   " ["
+   (propertize (concat " " kubel-context) 'face '(:background "LightSkyBlue1" :foreground "black"))
+   (propertize (concat " " kubel-namespace) 'face '(:background "SlateGray2" :foreground "black"))
+   (propertize (concat " " kubel-resource " ") 'face '(:background "SlateGray3" :foreground "black"))
+   "]"))
+
 ;;;###autoload
 (defun kubel-refresh ()
   (interactive)
