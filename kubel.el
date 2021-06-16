@@ -554,31 +554,23 @@ TYPENAME is the resource type/name."
 Use C-c C-c to kubectl apply the current yaml buffer."
   :init-value nil
   :keymap (let ((map (make-sparse-keymap)))
-            (define-key map (kbd "C-c C-c") 'kubel-apply)
+            (define-key map (kbd "C-c C-c") #'kubel-apply)
             map))
 
 (defun kubel-apply ()
   "Save the current buffer to a temp file and try to kubectl apply it."
   (interactive)
-  (setq dir-prefix (or
-                    (when (tramp-tramp-file-p default-directory)
-                      (with-parsed-tramp-file-name default-directory nil
-                        (format "/%s%s:%s@%s:" (or hop "") method user host)))
-                    ""))
-
-  (let* ((filename-without-tramp-prefix (format "/tmp/kubel/%s-%s.yaml"
-                                                (replace-regexp-in-string "\*\\| " "" (buffer-name))
-                                                (floor (float-time))))
-         (bn (buffer-name))
-         (filename (format "%s%s" dir-prefix filename-without-tramp-prefix)))
-    (when (y-or-n-p "Apply the changes? ")
-      (unless  (file-exists-p (format "%s/tmp/kubel" dir-prefix))
-        (make-directory (format "%s/tmp/kubel" dir-prefix) t))
-      (write-region (point-min) (point-max) filename)
-      (kubel--exec (format "kubectl - apply - %s" filename) (list "apply" "-f" filename-without-tramp-prefix))
-      (message "Applied %s" filename)
-      (kill-buffer-and-window)
-      (kill-buffer bn))))
+  (let* ((filename (format "/tmp/kubel/%s-%s.yaml"
+                           (replace-regexp-in-string "\*\\| " "" (buffer-name))
+                           (floor (float-time))))
+         (bn (buffer-name)))
+    (unless  (file-exists-p "/tmp/kubel")
+      (make-directory "/tmp/kubel"))
+    (write-region (point-min) (point-max) filename)
+    (kubel--exec (format "kubectl - apply - %s" filename) (list "apply" "-f" filename))
+    (message "Applied %s" filename)
+    (kill-buffer-and-window)
+    (kill-buffer bn)))
 
 (defun kubel-get-resource-details (&optional describe)
   "Get the details of the resource under the cursor.
@@ -816,10 +808,7 @@ P can be a single number or a localhost:container port pair."
   "Exec into the pod under the cursor -> `find-file."
   (interactive)
   (kubel-setup-tramp)
-  (let* ((dir-prefix (or
-                      (when (tramp-tramp-file-p default-directory)
-                        (with-parsed-tramp-file-name default-directory nil
-                          (format "%s%s:%s@%s|" (or hop "") method user host)))""))
+  (let* (
          (pod (if (kubel--is-pod-view)
                   (kubel--get-resource-under-cursor)
                 (kubel--select-resource "Pods")))
@@ -827,7 +816,7 @@ P can be a single number or a localhost:container port pair."
          (container (if (equal (length containers) 1)
                         (car containers)
                       (completing-read "Select container: " containers))))
-    (find-file (format "/%skubectl:%s@%s:/" dir-prefix container pod))))
+    (find-file (format "/kubectl:%s@%s:/" container pod))))
 
 (defun kubel-exec-shell-pod ()
   "Exec into the pod under the cursor -> shell."
@@ -1103,14 +1092,13 @@ RESET is to be called if the search is nil after the first attempt."
 (defvar kubel-last-position nil)
 
 ;;;###autoload
-(defun kubel (&optional directory)
+(defun kubel ()
   "Invoke the kubel buffer.
 
 DIRECTORY is optional for TRAMP support."
   (interactive)
   (kubel--save-line)
   (kubel--pop-to-buffer (kubel--buffer-name))
-  (when directory (setq default-directory directory))
   (kubel-mode)
   (kubel--current-state))
 
