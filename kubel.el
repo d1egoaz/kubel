@@ -1083,8 +1083,6 @@ RESET is to be called if the search is nil after the first attempt."
     map)
   "Keymap for `kubel-mode'.")
 
-(defvar kubel-last-position nil)
-
 ;;;###autoload
 (defun kubel ()
   "Invoke the kubel buffer.
