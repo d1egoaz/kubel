@@ -194,13 +194,13 @@ CMD is the command string to run."
    "\n" "" (kubel--exec-to-string "kubectl config current-context"))
   "Current context.  Tries to smart default.")
 
-(defvar kubel-resource-filter ""
+(defvar-local kubel-resource-filter ""
   "Substring filter for resource name.")
 
-(defvar kubel-selector ""
+(defvar-local kubel-selector ""
   "Label selector for resources.")
 
-(defvar kubel--line-number nil
+(defvar-local kubel--line-number nil
   "Store the current line number to jump back after a refresh.")
 
 (defvar kubel-selector-history '()
@@ -242,7 +242,7 @@ CMD is the command string to run."
 
 (defvar kubel--label-values-cached nil)
 
-(defvar kubel--selected-items '())
+(defvar-local kubel--selected-items '())
 
 (defun kubel--invalidate-context-caches ()
   "Invalidate the context caches."
