@@ -1091,7 +1091,6 @@ RESET is to be called if the search is nil after the first attempt."
 
 DIRECTORY is optional for TRAMP support."
   (interactive)
-  (kubel--save-line)
   (kubel--pop-to-buffer (kubel--buffer-name))
   (kubel-mode)
   (kubel--current-state))
@@ -1110,6 +1109,7 @@ DIRECTORY is optional for TRAMP support."
 ;;;###autoload
 (defun kubel-refresh ()
   (interactive)
+  (kubel--save-line)
   (let ((entries (kubel--populate-list)))
     (setq tabulated-list-format (car entries))
     (setq tabulated-list-entries (cadr entries)))   ; TODO handle "No resource found"
