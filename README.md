@@ -13,24 +13,26 @@ You can [watch how kubel started](https://www.youtube.com/watch?v=w3krYEeqnyk) o
 ## Main differences with https://github.com/abrochard/kubel
 
 My workflow needs to quickly change between multiple context, namespaces, and
-resources, kubel triggered a metadata refresh everytime that one of these
+resources, abrochard/kubel triggered a metadata refresh everytime that one of these
 changed. It also recreated the buffer and re-applied the mode (not sure why
 yet?).
 
 There is a new method `kubel-refresh` (bound to `g`) to call the kubectl command
-by demand using the configured parameters.  It doesn't matter to me that some
-metadata is stale, as most of the namespace/resources names that I use exist in
-different clusters. If for some reason a name doesn't exist, I can just type it
-or run `kubel-invalidate-caches` (`I`) or any of the new methods to fetch the
-right objects `kubel-fetch-contexts` (`C`), `kubel-fetch-namespaces` (`N`),
+by demand using the configured parameters.
+It doesn't matter to me that some metadata is stale, as most of the
+namespace/resources names that I use exist in different clusters. If for some
+reason a name doesn't exist, I can just type it or run `kubel-invalidate-caches`
+(`I`) or any of the new methods to fetch the right objects
+`kubel-fetch-contexts` (`C`), `kubel-fetch-namespaces` (`N`),
 `kubel-fetch-api-resource-list` (`R`).
 
-- Changing cluster/namespace/resource doesn't call kubectl.
-- Need to call `kubel-refresh` to run the command with the configured
+- Changing cluster/namespace doesn't automatically refresh.
+- When the resource changes (`r`) it automatically triggers a refresh.
+- Need to call by demand `kubel-refresh` to run the command with the configured
   cluster/namespace/resource.
 - Assume the user has access to list namespaces/resources.
-- Removed remote tramp support.
-- Don't recreate buffers, it only now uses the `*kubel*` buffer.
+- Removed remote tramp support. Add it back when submitting these changes to upstream, not sure if those folks with like my workflow ¯\_(ツ)_/¯
+- Don't recreate buffers, buffers are automatically renamed to `*kubel-context_namespace_resurce*`.
 - Offer a method to show current configuration in the mode line.
 
 My evil workflow bindings are:
