@@ -183,13 +183,13 @@ CMD is the command string to run."
   (kubel--log-command "kubectl-command" cmd)
   (shell-command-to-string cmd))
 
-(defvar kubel-namespace "default"
+(defvar-local kubel-namespace "default"
   "Current namespace.")
 
-(defvar kubel-resource "Pods"
+(defvar-local kubel-resource "Pods"
   "Current resource.")
 
-(defvar kubel-context
+(defvar-local kubel-context
   (replace-regexp-in-string
    "\n" "" (kubel--exec-to-string "kubectl config current-context"))
   "Current context.  Tries to smart default.")
@@ -366,7 +366,7 @@ If MAX is the end of the line, dynamically adjust."
 
 (defun kubel--buffer-name ()
   "Return kubel buffer name."
-  "*kubel*")
+  (format "*kubel-%s_%s_%s*" kubel-context kubel-namespace kubel-resource))
 
 (defun kubel--items-selected-p ()
   "Return non-nil if there are items selected."
@@ -693,8 +693,7 @@ ARGS is the arguments list from transient."
   "Set the namespace."
   (interactive)
   (setq kubel-namespace (completing-read "Namespace: " (kubel--get-namespace)
-                                         nil nil nil nil kubel-namespace))
-  (kubel))
+                                         nil nil nil nil kubel-namespace)))
 
 (defun kubel-fetch-contexts ()
   (interactive)
@@ -714,8 +713,7 @@ ARGS is the arguments list from transient."
   "Set the context."
   (interactive)
   (setq kubel-context (completing-read "Context: " (kubel--get-context)
-                                       nil nil nil nil kubel-context))
-  (kubel))
+                                       nil nil nil nil kubel-context)))
 
 (defun kubel--add-selector-to-history (selector)
   "Add SELECTOR to history if it isn't there already."
@@ -747,9 +745,7 @@ ARGS is the arguments list from transient."
     (when (equal selector "none")
       (setq selector ""))
     (setq kubel-selector selector))
-  (kubel--add-selector-to-history kubel-selector)
-                                        ; Update pod list according to the label selector
-  (kubel))
+  (kubel--add-selector-to-history kubel-selector))
 
 (defun kubel-fetch-api-resource-list ()
   (interactive)
@@ -771,7 +767,7 @@ ARGS is the arguments list from transient."
   (setq kubel-resource
         (completing-read "Select resource: " (kubel--get-resource)
                          nil nil nil nil kubel-resource))
-  (kubel))
+  (kubel-refresh))
 
 (defun kubel-set-output-format ()
   "Set output format of kubectl."
@@ -779,8 +775,7 @@ ARGS is the arguments list from transient."
   (setq kubel-output
         (completing-read
          "Set output format: "
-         '("yaml" "json" "wide" "custom-columns=")))
-  (kubel))
+         '("yaml" "json" "wide" "custom-columns="))))
 
 (defun kubel-port-forward-pod (p)
   "Port forward a pod to your local machine.
@@ -888,8 +883,7 @@ See https://github.com/kubernetes/kubernetes/issues/27081"
 
 FILTER is the filter string."
   (interactive "MFilter: ")
-  (setq kubel-resource-filter filter)
-  (kubel))
+  (setq kubel-resource-filter filter))
 
 (defun kubel--jump-to-highlight (init search reset)
   "Base function to jump to highlight.
@@ -949,8 +943,7 @@ RESET is to be called if the search is nil after the first attempt."
     (unless (-contains? kubel--selected-items item)
       (progn
         (push item kubel--selected-items)
-        (forward-line 1)
-        (kubel)))))
+        (forward-line 1)))))
 
 (defun kubel-unmark-item ()
   "Unmark the item under cursor."
@@ -958,8 +951,7 @@ RESET is to be called if the search is nil after the first attempt."
   (let ((item (kubel--get-resource-under-cursor)))
     (when (-contains? kubel--selected-items item)
       (progn
-        (setq kubel--selected-items (delete item kubel--selected-items))
-        (kubel)))))
+        (setq kubel--selected-items (delete item kubel--selected-items))))))
 
 (defun kubel-mark-all ()
   "Mark all items."
@@ -969,14 +961,12 @@ RESET is to be called if the search is nil after the first attempt."
     (goto-char (point-min))
     (while (not (eobp))
       (push (kubel--get-resource-under-cursor) kubel--selected-items)
-      (forward-line 1)))
-  (kubel))
+      (forward-line 1))))
 
 (defun kubel-unmark-all ()
   "Unmark all items."
   (interactive)
-  (setq kubel--selected-items '())
-  (kubel))
+  (setq kubel--selected-items '()))
 
 ;; popups
 
@@ -1124,6 +1114,8 @@ DIRECTORY is optional for TRAMP support."
   (setq tabulated-list-sort-key nil)
   (tabulated-list-init-header)
   (tabulated-list-print)
+  (rename-buffer (kubel--buffer-name))
+  (rename-uniquely)
   (kubel--current-state))
 
 (define-derived-mode kubel-mode tabulated-list-mode "Kubel"
