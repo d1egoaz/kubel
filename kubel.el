@@ -189,10 +189,8 @@ CMD is the command string to run."
 (defvar-local kubel-resource "Pods"
   "Current resource.")
 
-(defvar-local kubel-context
-  (replace-regexp-in-string
-   "\n" "" (kubel--exec-to-string "kubectl config current-context"))
-  "Current context.  Tries to smart default.")
+(defvar-local kubel-context ""
+  "Current context.")
 
 (defvar-local kubel-resource-filter ""
   "Substring filter for resource name.")
