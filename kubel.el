@@ -1129,10 +1129,6 @@ DIRECTORY is optional for TRAMP support."
   (add-to-list 'savehist-additional-variables 'kubel--namespace-list-cached)
   (add-to-list 'savehist-additional-variables 'kubel--kubernetes-resources-list-cached)
 
-  (add-to-list 'savehist-additional-variables 'kubel-context)
-  (add-to-list 'savehist-additional-variables 'kubel-namespace)
-  (add-to-list 'savehist-additional-variables 'kubel-resource)
-
   (setq truncate-lines t)
   (setq mode-name "Kubel")
   (setq major-mode 'kubel-mode)
