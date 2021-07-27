@@ -56,6 +56,21 @@ I've also mapped `q` to exit the yaml resource details:
   (evil-define-key 'normal 'kubel-yaml-editing-mode "q" #'kill-current-buffer)
 ```
 
+### Open specific combination of Context/Namespace/Resource
+
+You can create your own functions or just call `kubel-open` to create a buffer with the passed parameters.
+Remember that now you can have multiple kubel buffers at the same time, each one with their own configuration.
+
+``` lisp
+(defun diego/kubel-xxx-production ()
+  (interactive)
+  (kubel-open "xxx-xx-xxx1-3" "unrestricted" "pods"))
+
+(defun diego/kubel-yyy-staging ()
+  (interactive)
+  (kubel-open "yyy-yy-staging-yyy1-8" "registry" "runtimes"))
+```
+
 ### Mode line configuration
 
 `kubel-current-state` provides a method to show the current configuration in the mode line.

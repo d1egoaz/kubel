@@ -1084,13 +1084,25 @@ RESET is to be called if the search is nil after the first attempt."
 
 ;;;###autoload
 (defun kubel ()
-  "Invoke the kubel buffer.
-
-DIRECTORY is optional for TRAMP support."
+  "Invoke the kubel buffer with default values."
   (interactive)
   (kubel--pop-to-buffer (kubel--buffer-name))
-  (kubel-mode)
-  (kubel--current-state))
+  (kubel-mode))
+
+;;;###autoload
+(defun kubel-open (context namespace resource)
+  "Create a new kubel buffer with the passed parameters CONTEXT NAMESPACE RESOURCE."
+  (let ((tmpname "*kubel-tmp*")
+        (name (format "*kubel-%s_%s_%s*" context namespace resource)))
+    (if (get-buffer name)
+        (pop-to-buffer-same-window name)
+      (with-current-buffer (get-buffer-create tmpname)
+        (kubel-mode)
+        (setq kubel-context context)
+        (setq kubel-namespace namespace)
+        (setq kubel-resource resource)
+        (pop-to-buffer-same-window tmpname)
+        (kubel-refresh)))))
 
 (defun kubel--current-state ()
   (message (format "[Context: %s] [Namespace: %s] [Resource: %s]" kubel-context kubel-namespace kubel-resource)))
@@ -1115,7 +1127,6 @@ DIRECTORY is optional for TRAMP support."
   (tabulated-list-init-header)
   (tabulated-list-print)
   (rename-buffer (kubel--buffer-name))
-  (rename-uniquely)
   (kubel--current-state))
 
 (define-derived-mode kubel-mode tabulated-list-mode "Kubel"
