@@ -1117,8 +1117,10 @@ RESET is to be called if the search is nil after the first attempt."
 
 ;;;###autoload
 (defun kubel-refresh ()
+  "Refresh the current kubel buffer, calling kubectl using the configured context/namespace/resource."
   (interactive)
   (kubel--save-line)
+  (message (format "Running kubectl for: %s..."(kubel--buffer-name)))
   (let ((entries (kubel--populate-list)))
     (setq tabulated-list-format (car entries))
     (setq tabulated-list-entries (cadr entries)))   ; TODO handle "No resource found"
