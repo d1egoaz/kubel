@@ -174,14 +174,18 @@ off - always assume we cannot list namespaces"
   "Append string STR to the process buffer."
   (with-current-buffer (get-buffer-create kubel--process-buffer)
     (read-only-mode -1)
-    (goto-char (point-max))
+    (set-window-point
+     (get-buffer-window (current-buffer) 'visible)
+     (point-max))
     (insert (format "%s\n" str))))
 
 (defun kubel--append-to-process-err-buffer (str)
   "Append string STR to the process buffer."
   (with-current-buffer (get-buffer-create kubel--process-err-buffer)
     (read-only-mode -1)
-    (goto-char (point-max))
+    (set-window-point
+     (get-buffer-window (current-buffer) 'visible)
+     (point-max))
     (insert (format "%s\n" str))))
 
 (defvar-local kubel--last-command nil)
@@ -296,7 +300,7 @@ VERSION should be a list of (major-version minor-version patch)."
 
 (defun kubel--populate-list ()
   "Return a list with a tabulated list format and \"tabulated-list-entries\"."
-  (let*  ((body (kubel--exec-to-string (concat (kubel--get-command-prefix) " get " kubel-resource)))
+  (let*  ((body (kubel--exec-to-string (concat (kubel--get-command-prefix) " get " kubel-resource " 2> /dev/null")))
           (entrylist (kubel--parse-body body)))
     (when (string-prefix-p "No resources found" body)
       (message "No resources found"))  ;; TODO exception here
@@ -340,6 +344,7 @@ ENTRYLIST is the output of the parsed body."
   "Parse the body of kubectl get resource call into a list.
 
 BODY is the raw output of kubectl get resource."
+  (when (length> body 0)
   (let* ((lines (nbutlast (split-string body "\n")))
          (header (car lines))
          ;; Cronjobs have a "LAST SCHEDULE" column, so need to split on 2+ whitespace chars.
@@ -351,7 +356,7 @@ BODY is the raw output of kubectl get resource."
                        (mapcar (lambda (pos)
                                  (kubel--extract-value line (car pos) (cdr pos)))
                                position))))
-    (mapcar parse-line lines)))
+    (mapcar parse-line lines))))
 
 (defun kubel--extract-value (line min max)
   "Extract value from LINE between MIN and MAX.
@@ -420,17 +425,19 @@ NAME is the buffer name."
       (kubel--append-to-process-err-buffer (format "exit-code: %s\n" exit-status))
       (let ((err (with-current-buffer kubel--process-err-buffer
                    (buffer-string))))
-        (error (format "Kubel process error: %s" err))))))
+        (message "Kubel process error: %s" err)))))
 
-(defun kubel--exec (args &optional readonly)
+(defun kubel--exec (args &optional new-buffer)
   "Utility function to run commands in the proper context and namespace.
-
 ARGS is a ist of arguments.
 READONLY If true buffer will be in readonly mode(view-mode)."
   (let ((cmd (append (list "kubectl") (kubel--get-context-namespace) args))
         (buffer-name (format "*kubel resource: |%s|%s|%s|*" kubel-context kubel-namespace (string-join args "_"))))
-    (when (get-buffer buffer-name)
-      (kill-buffer buffer-name))
+      (when (get-buffer buffer-name)
+        (kill-buffer buffer-name))
+    (unless new-buffer
+      (setq buffer-name kubel--process-buffer))
+    ;; (message "new buffer: %s, buffer name: %s" new-buffer buffer-name)
     (kubel--log-command cmd)
     (make-process :name kubel--process-buffer
                   :buffer buffer-name
@@ -439,10 +446,10 @@ READONLY If true buffer will be in readonly mode(view-mode)."
                   :sentinel #'kubel--sentinel
                   :file-handler t
                   :stderr kubel--process-err-buffer)
-    (pop-to-buffer buffer-name)
-    (if readonly
-        (with-current-buffer buffer-name
-          (view-mode)))))
+    (when new-buffer
+      (pop-to-buffer buffer-name)
+      (with-current-buffer buffer-name
+        (view-mode)))))
 
 (defun kubel--get-resource-under-cursor ()
   "Utility function to get the name of the resource under the cursor.
@@ -509,8 +516,8 @@ NAME is the string name of the resource to decribe.
 DESCRIBE is boolean to describe instead of get resource details"
   (let* ((resource (kubel--select-resource name)))
     (if describe
-        (kubel--exec (list "describe" name resource))
-      (kubel--exec (list "get" name "-o" kubel-output resource)))
+        (kubel--exec (list "describe" name resource) t)
+      (kubel--exec (list "get" name "-o" kubel-output resource "2> /dev/null") t))
     (when (string-equal kubel-output "yaml")
       (yaml-mode)
       (kubel-yaml-editing-mode))))
@@ -607,8 +614,8 @@ Use C-c C-c to kubectl apply the current yaml buffer."
          (ns kubel-namespace)
          (res kubel-resource))
     (if describe
-        (kubel--exec (list "describe" kubel-resource (kubel--get-resource-under-cursor)))
-      (kubel--exec  (list "get" kubel-resource (kubel--get-resource-under-cursor) "-o" kubel-output)))
+        (kubel--exec (list "describe" kubel-resource (kubel--get-resource-under-cursor)) t)
+      (kubel--exec  (list "get" kubel-resource (kubel--get-resource-under-cursor) "-o" kubel-output) t))
     (when (or (string-equal kubel-output "yaml") (transient-args 'kubel-describe-popup))
       (yaml-mode)
       (kubel-yaml-editing-mode)
@@ -778,7 +785,7 @@ ARGS is the arguments list from transient."
   (message "fetching list of resources...")
   (setq kubel--kubernetes-resources-list-cached
         (split-string (kubel--exec-to-string
-                       (format "kubectl --context %s api-resources -o name --no-headers=true" kubel-context)) "\n"))
+                       (format "kubectl --context %s api-resources -o name --no-headers=true" kubel-context "2> /dev/null")) "\n"))
   (message "done"))
 
 (defun kubel--get-resource ()
@@ -924,8 +931,7 @@ See https://github.com/kubernetes/kubernetes/issues/27081"
 REPLICAS is the number of desired replicas."
   (interactive (list (read-number "Replicas: ")))
   (if (kubel--is-scalable)
-      (let* ((resource (kubel--get-resource-under-cursor))
-             (process-name (format "kubel:scale:%s/%s" kubel-resource resource)))
+      (let* ((resource (kubel--get-resource-under-cursor)))
         (kubel--exec (list "scale" kubel-resource resource "--replicas" (number-to-string replicas))))
     (message
      "[%s] cannot be scaled.\nOnly these resources can be scaled: [deployment, replica set, replication controller, and stateful set]."
@@ -1073,7 +1079,7 @@ RESET is to be called if the search is nil after the first attempt."
     ;; global
     ("RET" "Resource details" kubel-describe-popup)
     ("E" "Quick edit" kubel-quick-edit)
-    ("g" "Refresh" kubel-refresh)
+    (",," "Refresh" kubel-refresh)
     ("k" "Delete" kubel-delete-popup)
     ("r" "Rollout" kubel-rollout-history)]
    ["" ;; based on current view
@@ -1110,7 +1116,7 @@ RESET is to be called if the search is nil after the first attempt."
     (define-key map (kbd "K") 'kubel-set-kubectl-config-file)
     (define-key map (kbd "C") 'kubel-set-context)
     (define-key map (kbd "n") 'kubel-set-namespace)
-    (define-key map (kbd "g") 'kubel-refresh)
+    (define-key map (kbd ",,") 'kubel-refresh)
     (define-key map (kbd "h") 'kubel-help-popup)
     (define-key map (kbd "?") 'kubel-help-popup)
     (define-key map (kbd "F") 'kubel-set-output-format)
@@ -1212,10 +1218,6 @@ DIRECTORY is optional for TRAMP support."
   "Special mode for kubel buffers."
   (buffer-disable-undo)
   (kill-all-local-variables)
-
-  (add-to-list 'savehist-additional-variables 'kubel--context-list-cached)
-  (add-to-list 'savehist-additional-variables 'kubel--namespace-list-cached)
-  (add-to-list 'savehist-additional-variables 'kubel--kubernetes-resources-list-cached)
 
   (setq truncate-lines t)
   (setq mode-name "Kubel")

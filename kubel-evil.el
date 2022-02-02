@@ -77,7 +77,7 @@
     ;; global
     ("RET" "Resource details" kubel-describe-popup)
     ("E" "Quick edit" kubel-quick-edit)
-    ("g" "Refresh" kubel-refresh)
+    (",," "Refresh" kubel-refresh)
     ("d" "Delete" kubel-delete-popup) ;; can't use k here
     ("r" "Rollout" kubel-rollout-history)]
    ["" ;; based on current view
@@ -122,7 +122,7 @@
 
   (kbd "I") #'kubel-invalidate-caches
 
-  (kbd "g") #'kubel-refresh
+  (kbd ",,") #'kubel-refresh
 
   (kbd "h") #'kubel-evil-help-popup
   (kbd "?") #'kubel-evil-help-popup
