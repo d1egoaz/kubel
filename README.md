@@ -104,17 +104,18 @@ Example:
 ## Features
 We now support managing pretty much any resource!
 
-- switch context and namespace
-- show any resource (pods/services/deployments/etc)
-- highlight a resource by name
-- copy resource name to clipboard
-- show and edit resource details
-- show rollout history for a resource
-- delete a resource
-- tail container logs (possibly with `-f` follow flag)
-- copy container log command to clipboard
-- port forward a pod to your localhost
-- exec into a pod using tramp
+- Switch context and namespace.
+- Show any resource (pods/services/deployments/etc).
+- Highlight a resource by name.
+- Copy resource name to clipboard.
+- Show and edit resource details.
+- Show rollout history for a resource.
+- Delete a resource.
+- Tail container logs (possibly with `-f` follow flag).
+- Copy container log command to clipboard.
+- Port forward a pod to your localhost.
+- Exec into a pod using tramp.
+- Multiple kubel buffers, each one with different context, namespace, and resource.
 
 ## Installation
 
@@ -127,7 +128,7 @@ load the `kubel-evil.el` file.
 
 To list the pods in your current context and namespace, call
 ```
-M-x kubel
+M-x kubel-refresh
 ```
 To set said namespace and context, respectively call
 ```
@@ -144,6 +145,11 @@ M-x kubel-set-resource
 ```
 This will let you select a resource and re-display the kubel buffer.
 
+You can also use `kubel-open` to open directly a kubel buffer with the given parameters, example:
+``` lisp
+(kubel-open "custom-context" "custom-namespace" "custom-resource"))
+```
+
 ## Shortcuts
 
 On the kubel screen, place your cursor on a resource
@@ -152,6 +158,7 @@ enter => get resource details
 C-u enter => describe resource
 h => help popup
 ? => help popup
+! => quick run shell-command
 E => quick edit any resource
 g => refresh
 k => delete popup
@@ -160,6 +167,7 @@ p => port forward pod
 l => log popup
 e => exec popup
 j => jab deployment to force rolling update
+S => scale resource replicas
 C => set context
 n => set namespace
 R => set resource

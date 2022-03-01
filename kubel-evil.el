@@ -48,6 +48,7 @@
 ;; c => copy popup
 ;; d => delete pod
 ;; a => jab deployment to force rolling update
+;; S => scale replicas
 ;;
 
 ;;; Customize:
@@ -76,14 +77,15 @@
     ;; global
     ("RET" "Resource details" kubel-describe-popup)
     ("E" "Quick edit" kubel-quick-edit)
-    ("g" "Refresh" kubel)
+    (",," "Refresh" kubel-refresh)
     ("d" "Delete" kubel-delete-popup) ;; can't use k here
     ("r" "Rollout" kubel-rollout-history)]
    ["" ;; based on current view
     ("p" "Port forward" kubel-port-forward-pod)
     ("l" "Logs" kubel-log-popup)
     ("e" "Exec" kubel-exec-popup)
-    ("a" "Jab" kubel-jab-deployment)] ;; can't use j here
+    ("a" "Jab" kubel-jab-deployment) ;; can't use j here
+    ("S" "Scale replicas" kubel-scale-replicas)]
    ["Settings"
     ("C" "Set context" kubel-set-context)
     ("n" "Set namespace" kubel-set-namespace)
@@ -120,10 +122,10 @@
 
   (kbd "I") #'kubel-invalidate-caches
 
-  (kbd "g") #'kubel-refresh
+  (kbd ",,") #'kubel-refresh
 
-  (kbd "h") #'kubel-evil-help-popup
-  (kbd "?") #'kubel-evil-help-popup
+  (kbd "h") #'kubel-help-popup
+  (kbd "?") #'kubel-help-popup
 
   (kbd "F") #'kubel-set-output-format
   (kbd "d") #'kubel-delete-popup
@@ -137,6 +139,7 @@
   (kbd "Y") #'kubel-copy-popup
   (kbd "e") #'kubel-exec-popup
   (kbd "a") #'kubel-jab-deployment
+  (kbd "S") #'kubel-scale-replicas
   (kbd "u") #'kubel-unmark-item
   (kbd "M") #'kubel-mark-all
   (kbd "U") #'kubel-unmark-all)
