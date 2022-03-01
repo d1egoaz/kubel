@@ -713,7 +713,9 @@ ARGS is the arguments list from transient."
   (setq kubel--namespace-list-cached
         (split-string (kubel--exec-to-string
                        (format "kubectl --context %s get namespace -o jsonpath='{.items[*].metadata.name}'" kubel-context)) " "))
-  (message "done"))
+  (message "done")
+  (if (called-interactively-p 'interactive)
+      (kubel-set-namespace)))
 
 (defun kubel--get-namespace ()
   "Get namespaces for current context, try to recover from cache first."
@@ -734,7 +736,9 @@ ARGS is the arguments list from transient."
         (split-string
          (kubel--exec-to-string
           "kubectl config view -o jsonpath='{.contexts[*].name}'") " "))
-  (message "done"))
+  (message "done")
+  (if (called-interactively-p 'interactive)
+      (kubel-set-context)))
 
 (defun kubel--get-context ()
   "Get contexts, try to recover from cache first."
@@ -786,7 +790,9 @@ ARGS is the arguments list from transient."
   (setq kubel--kubernetes-resources-list-cached
         (split-string (kubel--exec-to-string
                        (format "kubectl --context %s api-resources -o name --no-headers=true" kubel-context "2> /dev/null")) "\n"))
-  (message "done"))
+  (message "done")
+  (if (called-interactively-p 'interactive)
+      (kubel-set-resource)))
 
 (defun kubel--get-resource ()
   "Get resources, try to recover from cache first."
