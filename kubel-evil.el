@@ -124,8 +124,8 @@
 
   (kbd ",,") #'kubel-refresh
 
-  (kbd "h") #'kubel-evil-help-popup
-  (kbd "?") #'kubel-evil-help-popup
+  (kbd "h") #'kubel-help-popup
+  (kbd "?") #'kubel-help-popup
 
   (kbd "F") #'kubel-set-output-format
   (kbd "d") #'kubel-delete-popup
