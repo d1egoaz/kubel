@@ -77,7 +77,7 @@
     ;; global
     ("RET" "Resource details" kubel-describe-popup)
     ("E" "Quick edit" kubel-quick-edit)
-    (",," "Refresh" kubel-refresh)
+    ("x" "Refresh" kubel-refresh)
     ("d" "Delete" kubel-delete-popup) ;; can't use k here
     ("r" "Rollout" kubel-rollout-history)]
    ["" ;; based on current view
@@ -122,7 +122,7 @@
 
   (kbd "I") #'kubel-invalidate-caches
 
-  (kbd ",,") #'kubel-refresh
+  (kbd "x") #'kubel-refresh
 
   (kbd "h") #'kubel-help-popup
   (kbd "?") #'kubel-help-popup
@@ -135,7 +135,8 @@
   (kbd "M-p") #'kubel-jump-to-previous-highlight
   (kbd "$") #'kubel-show-process-buffer
   (kbd "p") #'kubel-port-forward-pod
-  (kbd "l") #'kubel-log-popup
+  (kbd "l") #'kubel-tail-logs
+  (kbd "L") #'kubel-log-popup
   (kbd "Y") #'kubel-copy-popup
   (kbd "e") #'kubel-exec-popup
   (kbd "a") #'kubel-jab-deployment

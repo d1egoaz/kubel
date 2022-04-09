@@ -113,3 +113,8 @@ Alternatively, you can hit `E` to then select the resource type and the resource
 ## Releases
 
 See the [CHANGELOG.md](CHANGELOG.md) for the list of changes and maybe upcoming features.
+
+## TODO [/]
+
+- [ ]  add kubectl neat
+- [ ]  add stern

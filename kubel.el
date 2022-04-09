@@ -1085,7 +1085,7 @@ RESET is to be called if the search is nil after the first attempt."
     ;; global
     ("RET" "Resource details" kubel-describe-popup)
     ("E" "Quick edit" kubel-quick-edit)
-    (",," "Refresh" kubel-refresh)
+    ("x" "Refresh" kubel-refresh)
     ("k" "Delete" kubel-delete-popup)
     ("r" "Rollout" kubel-rollout-history)]
    ["" ;; based on current view
@@ -1122,7 +1122,7 @@ RESET is to be called if the search is nil after the first attempt."
     (define-key map (kbd "K") 'kubel-set-kubectl-config-file)
     (define-key map (kbd "C") 'kubel-set-context)
     (define-key map (kbd "n") 'kubel-set-namespace)
-    (define-key map (kbd ",,") 'kubel-refresh)
+    (define-key map (kbd "x") 'kubel-refresh)
     (define-key map (kbd "h") 'kubel-help-popup)
     (define-key map (kbd "?") 'kubel-help-popup)
     (define-key map (kbd "F") 'kubel-set-output-format)
@@ -1138,7 +1138,8 @@ RESET is to be called if the search is nil after the first attempt."
     ;; based on view
     (define-key map (kbd "p") 'kubel-port-forward-pod)
     (define-key map (kbd "S") 'kubel-scale-replicas)
-    (define-key map (kbd "l") 'kubel-log-popup)
+    (define-key map (kbd "l") 'kubel-tail-logs)
+    (define-key map (kbd "L") 'kubel-log-popup)
     (define-key map (kbd "c") 'kubel-copy-popup)
     (define-key map (kbd "e") 'kubel-exec-popup)
     (define-key map (kbd "!") 'kubel-exec-pod-by-shell-command)
@@ -1191,6 +1192,32 @@ DIRECTORY is optional for TRAMP support."
   (tabulated-list-print)
   (kubel--current-state)
   (kubel--jump-back-to-line))
+
+(defvar-local kubel-refresh-auto-timer nil
+  "Timer used when `dired-sidebar-should-follow-file' is true.")
+
+(defun kubel-refresh-auto ()
+  (interactive)
+  (let ((here (current-buffer)))
+
+    (add-hook 'kill-buffer-hook
+          (lambda ()
+            (when (timerp kubel-refresh-auto-timer)
+              (cancel-timer kubel-refresh-auto-timer))))
+
+    (setq kubel-refresh-auto-timer
+          (run-with-timer
+           2
+           4
+           (lambda ()
+             (with-current-buffer here
+               (kubel-refresh)))))))
+
+(defun kubel-refresh-auto-cancel ()
+  (interactive)
+  (when (timerp kubel-refresh-auto-timer)
+    (cancel-timer kubel-refresh-auto-timer)
+    (setq kubel-refresh-auto-timer nil)))
 
 ;;;###autoload
 (defun kubel-open (context namespace resource)
