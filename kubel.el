@@ -345,18 +345,18 @@ ENTRYLIST is the output of the parsed body."
 
 BODY is the raw output of kubectl get resource."
   (when (length> body 0)
-  (let* ((lines (nbutlast (split-string body "\n")))
-         (header (car lines))
-         ;; Cronjobs have a "LAST SCHEDULE" column, so need to split on 2+ whitespace chars.
-         (cols (split-string header (rx (>= 2 whitespace)) t))
-         (start-pos (mapcar (lambda (x) (string-match x header)) cols))
-         (end-pos (delete 0 (append start-pos '("end"))))
-         (position (-zip-with 'cons start-pos end-pos))
-         (parse-line (lambda (line)
-                       (mapcar (lambda (pos)
-                                 (kubel--extract-value line (car pos) (cdr pos)))
-                               position))))
-    (mapcar parse-line lines))))
+    (let* ((lines (nbutlast (split-string body "\n")))
+           (header (car lines))
+           ;; Cronjobs have a "LAST SCHEDULE" column, so need to split on 2+ whitespace chars.
+           (cols (split-string header (rx (>= 2 whitespace)) t))
+           (start-pos (mapcar (lambda (x) (string-match x header)) cols))
+           (end-pos (delete 0 (append start-pos '("end"))))
+           (position (-zip-with 'cons start-pos end-pos))
+           (parse-line (lambda (line)
+                         (mapcar (lambda (pos)
+                                   (kubel--extract-value line (car pos) (cdr pos)))
+                                 position))))
+      (mapcar parse-line lines))))
 
 (defun kubel--extract-value (line min max)
   "Extract value from LINE between MIN and MAX.
@@ -449,7 +449,8 @@ READONLY If true buffer will be in readonly mode(view-mode)."
     (when new-buffer
       (pop-to-buffer buffer-name)
       (with-current-buffer buffer-name
-        (view-mode)))))
+        (font-lock-mode 1)
+        (view-mode 1)))))
 
 (defun kubel--get-resource-under-cursor ()
   "Utility function to get the name of the resource under the cursor.
@@ -1189,7 +1190,7 @@ DIRECTORY is optional for TRAMP support."
   (setq tabulated-list-sort-key kubel--list-sort-key)
   (setq tabulated-list-sort-key nil)
   (tabulated-list-init-header)
-  (tabulated-list-print)
+  (tabulated-list-print t)
   (kubel--current-state)
   (kubel--jump-back-to-line))
 
@@ -1201,9 +1202,9 @@ DIRECTORY is optional for TRAMP support."
   (let ((here (current-buffer)))
 
     (add-hook 'kill-buffer-hook
-          (lambda ()
-            (when (timerp kubel-refresh-auto-timer)
-              (cancel-timer kubel-refresh-auto-timer))))
+              (lambda ()
+                (when (timerp kubel-refresh-auto-timer)
+                  (cancel-timer kubel-refresh-auto-timer))))
 
     (setq kubel-refresh-auto-timer
           (run-with-timer
@@ -1235,8 +1236,9 @@ DIRECTORY is optional for TRAMP support."
         (kubel-refresh)))))
 
 ;;;###autoload
-(defun kubel (&optional directory)
-  "Invoke the kubel buffer.
+(defun kubel-refresh (&optional directory)
+  "Refresh the current kubel buffer, calling kubectl using the configured
+context, namespace, and resource.
 
 DIRECTORY is optional for TRAMP support."
   (interactive)
@@ -1245,7 +1247,9 @@ DIRECTORY is optional for TRAMP support."
          (buf (generate-new-buffer name)))
     (switch-to-buffer buf)
     (with-current-buffer buf
-      (kubel-mode))))
+      (kubel-mode))
+    (kubel-show-process-buffer)
+    (switch-to-buffer buf)))
 
 (define-derived-mode kubel-mode tabulated-list-mode "Kubel"
   "Special mode for kubel buffers."
@@ -1258,6 +1262,10 @@ DIRECTORY is optional for TRAMP support."
   (use-local-map kubel-mode-map)
   (hl-line-mode 1)
   (run-mode-hooks 'kubel-mode-hook))
+
+(defun kubel-tail-logs ()
+  (interactive)
+  (kubel-get-pod-logs '("-f")))
 
 (provide 'kubel)
 ;;; kubel.el ends here
