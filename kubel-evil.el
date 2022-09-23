@@ -77,7 +77,7 @@
     ;; global
     ("RET" "Resource details" kubel-describe-popup)
     ("E" "Quick edit" kubel-quick-edit)
-    ("g" "Refresh" kubel)
+    ("x" "Refresh" kubel-refresh)
     ("d" "Delete" kubel-delete-popup) ;; can't use k here
     ("r" "Rollout" kubel-rollout-history)]
    ["" ;; based on current view
@@ -110,23 +110,34 @@
 (evil-define-key 'motion kubel-evil-mode-map
   (kbd "RET") #'kubel-get-resource-details
   (kbd "K") #'kubel-set-kubectl-config-file
-  (kbd "C") #'kubel-set-context
+
+  (kbd "c") #'kubel-set-context
+  (kbd "C") #'kubel-fetch-contexts
+
   (kbd "n") #'kubel-set-namespace
-  (kbd "g") #'kubel
-  (kbd "h") #'kubel-evil-help-popup
-  (kbd "?") #'kubel-evil-help-popup
+  (kbd "N") #'kubel-fetch-namespaces
+
+  (kbd "r") #'kubel-set-resource
+  (kbd "R") #'kubel-fetch-api-resource-list
+
+  (kbd "I") #'kubel-invalidate-caches
+
+  (kbd "x") #'kubel-refresh
+
+  (kbd "h") #'kubel-help-popup
+  (kbd "?") #'kubel-help-popup
+
   (kbd "F") #'kubel-set-output-format
-  (kbd "R") #'kubel-set-resource
   (kbd "d") #'kubel-delete-popup
   (kbd "f") #'kubel-set-filter
-  (kbd "r") #'kubel-rollout-history
   (kbd "E") #'kubel-quick-edit
   (kbd "M-n") #'kubel-jump-to-next-highlight
   (kbd "M-p") #'kubel-jump-to-previous-highlight
   (kbd "$") #'kubel-show-process-buffer
   (kbd "p") #'kubel-port-forward-pod
-  (kbd "l") #'kubel-log-popup
-  (kbd "c") #'kubel-copy-popup
+  (kbd "l") #'kubel-tail-pod-logs
+  (kbd "L") #'kubel-log-popup
+  (kbd "Y") #'kubel-copy-popup
   (kbd "e") #'kubel-exec-popup
   (kbd "a") #'kubel-jab-deployment
   (kbd "S") #'kubel-scale-replicas
