@@ -200,8 +200,8 @@ CMD is the command string to run."
   "Current resource.")
 
 (defvar-local kubel-context
-  (replace-regexp-in-string
-   "\n" "" (kubel--exec-to-string "kubectl config current-context"))
+    (replace-regexp-in-string
+     "\n" "" (kubel--exec-to-string "kubectl config current-context"))
   "Current context.  Tries to smart default.")
 
 (defvar-local kubel-resource-filter ""
@@ -245,50 +245,13 @@ CMD is the command string to run."
     "RoleBindings"
     "Roles"))
 
-(defvar-local kubel--kubernetes-version-cached nil)
-
 (defvar kubel--kubernetes-resources-list-cached nil)
-
-(defvar-local kubel--can-get-namespace-cached nil)
 
 (defvar kubel--namespace-list-cached nil)
 
 (defvar-local kubel--label-values-cached nil)
 
 (defvar-local kubel--selected-items '())
-
-(defun kubel--invalidate-context-caches ()
-  "Invalidate the context caches."
-  (setq kubel--kubernetes-resources-list-cached nil)
-  (setq kubel--kubernetes-version-cached nil)
-  (setq kubel--can-get-namespace-cached nil)
-  (setq kubel--namespace-list-cached nil)
-  (setq kubel--label-values-cached nil))
-
-(defun kubel-kubernetes-version ()
-  "Return a list with (major-version minor-version patch)."
-  (let ((version-string (if (null kubel--kubernetes-version-cached)
-                            (setq kubel--kubernetes-version-cached
-                                  (kubel--exec-to-string "kubectl version"))
-                          kubel--kubernetes-version-cached)))
-    (string-match "GitVersion:\"v\\([0-9]*\\)\.\\([0-9]*\\)\.\\([0-9]*\\)[^0-9].*\"" version-string)
-    (list
-     (string-to-number (match-string 1 version-string))
-     (string-to-number (match-string 2 version-string))
-     (string-to-number (match-string 3 version-string)))))
-
-(defun kubel-kubernetes-compatible-p (version)
-  "Return TRUE if kubernetes version is greater than or equal to VERSION.
-VERSION should be a list of (major-version minor-version patch)."
-  (let*
-      ((kubernetes-version (kubel-kubernetes-version))
-       (kubernetes-major-version (nth 0 kubernetes-version))
-       (kubernetes-minor-version (nth 1 kubernetes-version))
-       (kubernetes-patch-version (nth 2 kubernetes-version)))
-    (and
-     (<= (nth 0 version) kubernetes-major-version)
-     (or (<= (nth 1 version) kubernetes-minor-version) (< (nth 0 version) kubernetes-major-version))
-     (or (<= (nth 2 version) kubernetes-patch-version) (< (nth 1 version) kubernetes-minor-version)))))
 
 (defun kubel--populate-list ()
   "Return a list with a tabulated list format and \"tabulated-list-entries\"."
@@ -336,7 +299,7 @@ ENTRYLIST is the output of the parsed body."
   "Parse the body of kubectl get resource call into a list.
 
 BODY is the raw output of kubectl get resource."
-  (let* ((lines (nbutlast (split-string body "\n")))
+  (let* ((lines (or (nbutlast (split-string body "\n")) '("")))
          (header (car lines))
          ;; Cronjobs have a "LAST SCHEDULE" column, so need to split on 2+ whitespace chars.
          (cols (split-string header (rx (>= 2 whitespace)) t))
@@ -637,6 +600,13 @@ ARGS is the arg list from transient."
       args
     (append args (list (concat "--tail=" (format "%s" kubel-log-tail-n))))))
 
+(defun kubel-get-pod-logs-previous (&optional args type)
+  "Get the last N logs of the previous pod under the cursor.
+If your container has previously crashed, you can access the previous container's crash log with:
+
+kubectl logs --previous ${POD_NAME} ${CONTAINER_NAME}"
+  )
+
 (defun kubel-get-pod-logs (&optional args type)
   "Get the last N logs of the pod under the cursor.
 
@@ -715,18 +685,6 @@ ARGS is the arguments list from transient."
         (setenv "KUBECONFIG" (expand-file-name configfile))
       (error "Kubectl config file '%s' does not exist!" configfile))))
 
-(defun kubel--can-get-namespace ()
-  "Determine if permissions allow for `kubectl get namespace` in current context."
-  (cond ((eq kubel-use-namespace-list 'on) t)
-        ((eq kubel-use-namespace-list 'auto)
-         (progn
-           (unless kubel--can-get-namespace-cached
-             (setq kubel--can-get-namespace-cached
-                   (equal "yes\n"
-                          (kubel--exec-to-string
-                           (format "kubectl --context %s auth can-i list namespaces" kubel-context))))))
-         kubel--can-get-namespace-cached)))
-
 (defun kubel--get-namespace ()
   "Get namespaces for current context, try to recover from cache first."
   (unless kubel--namespace-list-cached
@@ -734,12 +692,6 @@ ARGS is the arguments list from transient."
           (split-string (kubel--exec-to-string
                          (format "kubectl --context %s get namespace -o jsonpath='{.items[*].metadata.name}'" kubel-context)) " ")))
   kubel--namespace-list-cached)
-
-(defun kubel--list-namespace ()
-  "List namespace, either from history, or dynamically if possible."
-  (if (kubel--can-get-namespace)
-      (kubel--get-namespace)
-    kubel-namespace-history))
 
 (defun kubel--add-namespace-to-history (namespace)
   "Add NAMESPACE to history if it isn't there already."
@@ -749,7 +701,9 @@ ARGS is the arguments list from transient."
 (defun kubel-set-namespace ()
   "Set the namespace."
   (interactive)
-  (let* ((namespace (completing-read "Namespace: " (kubel--list-namespace)
+  (when current-prefix-arg
+    (setq kubel--namespace-list-cached nil))
+  (let* ((namespace (completing-read "Namespace: " (kubel--get-namespace)
                                      nil nil nil nil "default"))
          (kubel--buffer (get-buffer (kubel--buffer-name)))
          (last-default-directory (when kubel--buffer
@@ -767,7 +721,6 @@ ARGS is the arguments list from transient."
           (completing-read
            "Select context: "
            (split-string (kubel--exec-to-string "kubectl config view -o jsonpath='{.contexts[*].name}'") " ")))
-    (kubel--invalidate-context-caches)
     (setq kubel-namespace "default")
     (kubel-refresh last-default-directory)))
 
@@ -784,53 +737,53 @@ ARGS is the arguments list from transient."
   kubel--label-values-cached)
 
 (defun kubel--list-selectors ()
-  "List selector expressions from history."
-  (delete-dups
-   (append '("none") (kubel--get-all-selectors)
-           kubel-selector-history)))
+ "List selector expressions from history."
+ (delete-dups
+  (append '("none") (kubel--get-all-selectors)
+          kubel-selector-history)))
 
 (defun kubel-set-label-selector ()
-  "Set the selector."
-  (interactive)
-  (let ((selector (completing-read
-                   "Selector: "
-                   (kubel--list-selectors))))
-    (when (equal selector "none")
-      (setq selector ""))
-    (setq kubel-selector selector))
-  (kubel--add-selector-to-history kubel-selector)
-  ;; Update pod list according to the label selector
-  (kubel-refresh))
+ "Set the selector."
+ (interactive)
+ (let ((selector (completing-read
+                  "Selector: "
+                  (kubel--list-selectors))))
+   (when (equal selector "none")
+     (setq selector ""))
+   (setq kubel-selector selector))
+ (kubel--add-selector-to-history kubel-selector)
+ ;; Update pod list according to the label selector
+ (kubel-refresh))
 
 (defun kubel--fetch-api-resource-list ()
-  "Fetch the API resource list."
-  (split-string (kubel--exec-to-string
-                 (format "kubectl --context %s api-resources -o name --no-headers=true" kubel-context)) "\n" t))
+ "Fetch the API resource list."
+ (split-string (kubel--exec-to-string
+                (format "kubectl --context %s api-resources -o name --no-headers=true" kubel-context)) "\n" t))
 
-(defun kubel-set-resource (&optional refresh)
-  "Set the resource.
+(defun kubel-set-resource ()
+ "Set the resource.
 If called with a prefix argument REFRESH, refreshes
 the context caches, including the cached resource list."
-  (interactive "P")
-  (when refresh (kubel--invalidate-context-caches))
+  (interactive)
+  (when current-prefix-arg
+  (setq kubel--kubernetes-resources-list-cached nil))
   (let* ((current-buffer-name (kubel--buffer-name))
-         (resource-list (if (kubel-kubernetes-compatible-p '(1 13 3))
-                            (if (null kubel--kubernetes-resources-list-cached)
-                                (setq kubel--kubernetes-resources-list-cached
-                                      (kubel--fetch-api-resource-list))
-                              kubel--kubernetes-resources-list-cached)
-                          kubel-kubernetes-resources-list))
-         (kubel--buffer (get-buffer current-buffer-name))
-         (last-default-directory (when kubel--buffer (with-current-buffer kubel--buffer default-directory))))
-    (setq kubel-resource
-          (completing-read "Select resource: " resource-list))
-    (kubel-refresh last-default-directory)))
+       (resource-list
+        (if (null kubel--kubernetes-resources-list-cached)
+            (setq kubel--kubernetes-resources-list-cached
+                  (kubel--fetch-api-resource-list))
+          kubel--kubernetes-resources-list-cached))
+       (kubel--buffer (get-buffer current-buffer-name))
+       (last-default-directory (when kubel--buffer (with-current-buffer kubel--buffer default-directory))))
+  (setq kubel-resource
+        (completing-read "Select resource: " resource-list))
+  (kubel-refresh last-default-directory)))
 
 (defun kubel-set-output-format ()
   "Set output format of kubectl."
   (interactive)
   (setq kubel-output
-        (completing-read
+      (completing-read
          "Set output format: "
          (completing-read
           "Set output format: "
@@ -1064,7 +1017,7 @@ RESET is to be called if the search is nil after the first attempt."
 
 ;; popups
 
-(define-transient-command kubel-exec-popup ()
+(transient-define-prefix kubel-exec-popup ()
   "Kubel Exec Menu"
   ["Actions"
    ("!" "Shell command" kubel-exec-pod-by-shell-command)
@@ -1072,7 +1025,7 @@ RESET is to be called if the search is nil after the first attempt."
    ("e" "Eshell" kubel-exec-eshell-pod)
    ("s" "Shell" kubel-exec-shell-pod)])
 
-(define-transient-command kubel-log-popup ()
+(transient-define-prefix kubel-log-popup ()
   "Kubel Log Menu"
   ["Arguments"
    ("-f" "Follow" "-f")
@@ -1083,7 +1036,7 @@ RESET is to be called if the search is nil after the first attempt."
    ("i" "Tail initContainer logs" kubel-get-pod-logs--initContainer)
    ("L" "Tail by labels" kubel-get-logs-by-labels)])
 
-(define-transient-command kubel-copy-popup ()
+(transient-define-prefix kubel-copy-popup ()
   "Kubel Copy Menu"
   ["Actions"
    ("c" "Copy resource name" kubel-copy-resource-name)
@@ -1091,53 +1044,52 @@ RESET is to be called if the search is nil after the first attempt."
    ("p" "Copy command prefix" kubel-copy-command-prefix)
    ("C" "Copy last command" kubel-copy-last-command)])
 
-(define-transient-command kubel-delete-popup ()
+(transient-define-prefix kubel-delete-popup ()
   "Kubel Delete menu"
   ["Arguments"
    ("-f" "Force" "--force --grace-period=0")]
   ["Actions"
    ("k" "Delete resource(s)" kubel-delete-resource)])
 
-(define-transient-command kubel-describe-popup ()
+(transient-define-prefix kubel-describe-popup ()
   "Kubel Describe Menu"
   ["Arguments"
    ("-y" "Yaml" "-o yaml")]
   ["Actions"
    ("RET" "Describe" kubel-get-resource-details)])
 
-(define-transient-command kubel-help-popup ()
+(transient-define-prefix kubel-help-popup ()
   "Kubel Menu"
   [["Actions"
     ;; global
     ("RET" "Resource details" kubel-describe-popup)
     ("E" "Quick edit" kubel-quick-edit)
-    ("g" "Refresh" kubel-refresh)
-    ("k" "Delete" kubel-delete-popup)
-    ("r" "Rollout" kubel-rollout-history)]
+    ("x" "Refresh" kubel-refresh)
+    ("K" "Delete" kubel-delete-popup) ;; can't use k here
+    ("R" "Rollout" kubel-rollout-history)]
    ["" ;; based on current view
     ("p" "Port forward" kubel-port-forward-pod)
     ("l" "Logs" kubel-log-popup)
     ("e" "Exec" kubel-exec-popup)
-    ("j" "Jab" kubel-jab-deployment)
+    ("A" "Jab" kubel-jab-deployment) ;; can't use j here
     ("S" "Scale replicas" kubel-scale-replicas)]
    ["Settings"
-    ("C" "Set context" kubel-set-context)
+    ("c" "Set context" kubel-set-context)
     ("n" "Set namespace" kubel-set-namespace)
-    ("R" "Set resource" kubel-set-resource)
-    ("K" "Set kubectl config file" kubel-set-kubectl-config-file)
+    ("r" "Set resource" kubel-set-resource)
     ("F" "Set output format" kubel-set-output-format)]
    ["Filter"
+    ("s" "Set label selector" kubel-set-label-selector)
     ("f" "Filter" kubel-set-filter)
     ("M-n" "Next highlight" kubel-jump-to-next-highlight)
-    ("M-p" "Previous highlight" kubel-jump-to-previous-highlight)
-    ("s" "Set label selector" kubel-set-label-selector)]
+    ("M-p" "Previous highlight" kubel-jump-to-previous-highlight)]
    ["Marking"
     ("m" "Mark item" kubel-mark-item)
     ("u" "Unmark item" kubel-unmark-item)
     ("M" "Mark all items" kubel-mark-all)
     ("U" "Unmark all items" kubel-unmark-all)]
    ["Utilities"
-    ("c" "Copy to clipboad..." kubel-copy-popup)
+    ("Y" "Copy to clipboad..." kubel-copy-popup)
     ("$" "Show Process buffer" kubel-show-process-buffer)]])
 
 ;; mode map
@@ -1145,17 +1097,15 @@ RESET is to be called if the search is nil after the first attempt."
   (let ((map (make-sparse-keymap)))
     ;; global
     (define-key map (kbd "RET") 'kubel-get-resource-details)
-    (define-key map (kbd "K") 'kubel-set-kubectl-config-file)
-    (define-key map (kbd "C") 'kubel-set-context)
+    (define-key map (kbd "c") 'kubel-set-context)
     (define-key map (kbd "n") 'kubel-set-namespace)
-    (define-key map (kbd "g") 'kubel-refresh)
+    (define-key map (kbd "x") 'kubel-refresh)
     (define-key map (kbd "h") 'kubel-help-popup)
     (define-key map (kbd "?") 'kubel-help-popup)
     (define-key map (kbd "F") 'kubel-set-output-format)
-    (define-key map (kbd "R") 'kubel-set-resource)
-    (define-key map (kbd "k") 'kubel-delete-popup)
+    (define-key map (kbd "r") 'kubel-set-resource)
+    (define-key map (kbd "K") 'kubel-delete-popup)
     (define-key map (kbd "f") 'kubel-set-filter)
-    (define-key map (kbd "r") 'kubel-rollout-history)
     (define-key map (kbd "E") 'kubel-quick-edit)
     (define-key map (kbd "M-n") 'kubel-jump-to-next-highlight)
     (define-key map (kbd "M-p") 'kubel-jump-to-previous-highlight)
@@ -1165,10 +1115,9 @@ RESET is to be called if the search is nil after the first attempt."
     (define-key map (kbd "p") 'kubel-port-forward-pod)
     (define-key map (kbd "S") 'kubel-scale-replicas)
     (define-key map (kbd "l") 'kubel-log-popup)
-    (define-key map (kbd "c") 'kubel-copy-popup)
+    (define-key map (kbd "Y") 'kubel-copy-popup)
     (define-key map (kbd "e") 'kubel-exec-popup)
     (define-key map (kbd "!") 'kubel-exec-pod-by-shell-command)
-    (define-key map (kbd "j") 'kubel-jab-deployment)
 
     (define-key map (kbd "m") 'kubel-mark-item)
     (define-key map (kbd "u") 'kubel-unmark-item)

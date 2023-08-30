@@ -71,28 +71,28 @@
 
 (add-hook 'kubel-mode-hook 'kubel-evil-mode)
 
-(define-transient-command kubel-evil-help-popup ()
+(transient-define-prefix kubel-evil-help-popup ()
   "Kubel Evil Menu"
   [["Actions"
     ;; global
     ("RET" "Resource details" kubel-describe-popup)
     ("E" "Quick edit" kubel-quick-edit)
     ("x" "Refresh" kubel-refresh)
-    ("d" "Delete" kubel-delete-popup) ;; can't use k here
-    ("r" "Rollout" kubel-rollout-history)]
+    ("K" "Delete" kubel-delete-popup) ;; can't use k here
+    ("R" "Rollout" kubel-rollout-history)]
    ["" ;; based on current view
     ("p" "Port forward" kubel-port-forward-pod)
     ("l" "Logs" kubel-log-popup)
     ("e" "Exec" kubel-exec-popup)
-    ("a" "Jab" kubel-jab-deployment) ;; can't use j here
+    ("J" "Jab" kubel-jab-deployment) ;; can't use j here
     ("S" "Scale replicas" kubel-scale-replicas)]
    ["Settings"
-    ("C" "Set context" kubel-set-context)
+    ("c" "Set context" kubel-set-context)
     ("n" "Set namespace" kubel-set-namespace)
-    ("R" "Set resource" kubel-set-resource)
-    ("K" "Set kubectl config file" kubel-set-kubectl-config-file)
+    ("r" "Set resource" kubel-set-resource)
     ("F" "Set output format" kubel-set-output-format)]
    ["Filter"
+    ("s" "Set label selector" kubel-set-label-selector)
     ("f" "Filter" kubel-set-filter)
     ("M-n" "Next highlight" kubel-jump-to-next-highlight)
     ("M-p" "Previous highlight" kubel-jump-to-previous-highlight)]
@@ -102,33 +102,31 @@
     ("M" "Mark all items" kubel-mark-all)
     ("U" "Unmark all items" kubel-unmark-all)]
    ["Utilities"
-    ("c" "Copy to clipboad..." kubel-copy-popup)
+    ("Y" "Copy to clipboad..." kubel-copy-popup)
     ("$" "Show Process buffer" kubel-show-process-buffer)]])
 
 (evil-set-initial-state 'kubel-mode 'motion)
 
 (evil-define-key 'motion kubel-evil-mode-map
   (kbd "RET") #'kubel-get-resource-details
-  (kbd "K") #'kubel-set-kubectl-config-file
-  (kbd "C") #'kubel-set-context
+  (kbd "c") #'kubel-set-context
   (kbd "n") #'kubel-set-namespace
   (kbd "x") #'kubel-refresh
   (kbd "h") #'kubel-evil-help-popup
   (kbd "?") #'kubel-evil-help-popup
   (kbd "F") #'kubel-set-output-format
-  (kbd "R") #'kubel-set-resource
-  (kbd "d") #'kubel-delete-popup
+  (kbd "r") #'kubel-set-resource
+  (kbd "K") #'kubel-delete-popup
   (kbd "f") #'kubel-set-filter
-  (kbd "r") #'kubel-rollout-history
+  (kbd "s") #'kubel-set-label-selector
   (kbd "E") #'kubel-quick-edit
   (kbd "M-n") #'kubel-jump-to-next-highlight
   (kbd "M-p") #'kubel-jump-to-previous-highlight
   (kbd "$") #'kubel-show-process-buffer
-  (kbd "p") #'kubel-port-forward-pod
+  (kbd "P") #'kubel-port-forward-pod
   (kbd "l") #'kubel-log-popup
-  (kbd "c") #'kubel-copy-popup
+  (kbd "Y") #'kubel-copy-popup
   (kbd "e") #'kubel-exec-popup
-  (kbd "a") #'kubel-jab-deployment
   (kbd "S") #'kubel-scale-replicas
   (kbd "u") #'kubel-unmark-item
   (kbd "M") #'kubel-mark-all
