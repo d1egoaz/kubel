@@ -377,15 +377,20 @@ NAME is the buffer name."
   (format "*%s:err*" process-name))
 
 (defun kubel--sentinel (process _)
-  "Sentinel function for PROCESS."
+  "Sentinel function for PROCESS that navigates to the first line of the buffer after completion."
   (let ((process-name (process-name process))
-        (exit-status (process-exit-status process)))
+        (exit-status (process-exit-status process))
+        (output-buffer (process-buffer process)))
     (kubel--append-to-process-buffer (format "[%s]\nexit-code: %s" process-name exit-status))
     (unless (eq 0 exit-status)
       (let ((err (with-current-buffer (kubel--process-error-buffer process-name)
                    (buffer-string))))
         (kubel--append-to-process-buffer (format "error: %s" err))
-        (error (format "Kubel process %s error: %s" process-name err))))))
+        (error (format "Kubel process %s error: %s" process-name err))))
+    ;; Move point to the beginning of the output buffer
+    (when (buffer-live-p output-buffer)
+      (with-current-buffer output-buffer
+        (goto-char (point-min))))))
 
 (defun kubel--exec (process-name args &optional readonly)
   "Utility function to run commands in the proper context and namespace.
