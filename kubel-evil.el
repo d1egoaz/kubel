@@ -103,11 +103,11 @@
     ("U" "Unmark all items" kubel-unmark-all)]
    ["Utilities"
     ("Y" "Copy to clipboad..." kubel-copy-popup)
-    ("$" "Show Process buffer" kubel-show-process-buffer)]])
+    ("p" "Show Process buffer" kubel-show-process-buffer)]])
 
-(evil-set-initial-state 'kubel-mode 'motion)
+(evil-set-initial-state 'kubel-mode 'normal)
 
-(evil-define-key 'motion kubel-evil-mode-map
+(evil-define-key 'normal kubel-evil-mode-map
   (kbd "RET") #'kubel-get-resource-details
   (kbd "c") #'kubel-set-context
   (kbd "n") #'kubel-set-namespace
@@ -122,7 +122,7 @@
   (kbd "E") #'kubel-quick-edit
   (kbd "M-n") #'kubel-jump-to-next-highlight
   (kbd "M-p") #'kubel-jump-to-previous-highlight
-  (kbd "$") #'kubel-show-process-buffer
+  (kbd "p") #'kubel-show-process-buffer
   (kbd "P") #'kubel-port-forward-pod
   (kbd "l") #'kubel-log-popup
   (kbd "Y") #'kubel-copy-popup
