@@ -417,7 +417,14 @@ READONLY If true buffer will be in readonly mode(view-mode)."
     (kubel--log-command process-name cmd-str)
     ;; For logs commands, run in new wezterm window instead of creating kubel buffer
     (if (and args (string-equal (car args) "logs"))
-           (start-process "kubel-wezterm" nil "wezterm" "cli" "spawn" "fish" "-c" (concat (replace-regexp-in-string "^kubectl" (executable-find "kubectl") cmd-str) "; exec $SHELL"))
+        (progn
+               (start-process "kubel-ghostty" nil "ghostty" "-e" "fish" "-l" "-c"
+                   (concat "trap 'echo \"Command interrupted. Shell ready for new commands.\"' INT; "
+                           cmd-str
+                           "; echo 'Command finished. Shell ready for new commands.'; exec fish"))
+           )
+      ;; (call-process "wezterm" nil "*wezterm-output*" nil "cli" "spawn" "--" "zsh" "-c" "'echo hello; exec fish'")
+;; (switch-to-buffer "*wezterm-output*")
       ;; For all other commands, use the normal kubel buffer process
       (progn ; wezterm cli spawn -- bash -c
         (setq bash-cmd (list "bash" "-c" cmd-str))
